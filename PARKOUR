@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PARKOUR RUNNER V4.3 - FIXED</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #00ff41;
+            --secondary-color: #00f2ff;
+            --alert-color: #ff003c;
+            --gold-color: #ffd700;
+            --bg-dark: #010204;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: white;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 1200px;
+            height: 600px;
+            background: linear-gradient(180deg, #0a0a0a 0%, #000 100%);
+            border: 2px solid #1a1a1a;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 1);
+            overflow: hidden;
+        }
+
+        /* === PLAYER === */
+        #player {
+            position: absolute;
+            width: 40px;
+            height: 80px;
+            left: 100px;
+            bottom: 0;
+            z-index: 100;
+        }
+
+        .player-body {
+            position: absolute;
+            background: white;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .head { top: 0; left: 50%; transform: translateX(-50%); width: 20px; height: 20px; border-radius: 50%; }
+        .torso { top: 22px; left: 50%; transform: translateX(-50%); width: 12px; height: 30px; }
+        .arm-l { top: 25px; left: 8px; width: 6px; height: 35px; animation: swing-arm 0.4s infinite alternate; transform-origin: top; }
+        .arm-r { top: 25px; right: 8px; width: 6px; height: 35px; animation: swing-arm 0.4s infinite alternate-reverse; transform-origin: top; }
+        .leg-l { bottom: 0; left: 12px; width: 6px; height: 40px; animation: swing-leg 0.4s infinite alternate; transform-origin: top; }
+        .leg-r { bottom: 0; right: 12px; width: 6px; height: 40px; animation: swing-leg 0.4s infinite alternate-reverse; transform-origin: top; }
+
+        @keyframes swing-arm { from { transform: rotateZ(-30deg); } to { transform: rotateZ(30deg); } }
+        @keyframes swing-leg { from { transform: rotateZ(-40deg); } to { transform: rotateZ(40deg); } }
+
+        /* === OBSTACLES === */
+        .obstacle {
+            position: absolute;
+            bottom: 0;
+            background: linear-gradient(180deg, rgba(50, 50, 50, 1) 0%, rgba(20, 20, 20, 1) 100%);
+            border-top: 3px solid rgba(0, 255, 65, 0.8);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+        }
+
+        /* === UI PANELS === */
+        #sidebar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 250px;
+            background: rgba(2, 12, 6, 0.95);
+            border-right: 1px solid var(--primary-color);
+            padding: 20px;
+            font-size: 11px;
+            color: var(--primary-color);
+            overflow-y: auto;
+            z-index: 50;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.1);
+            margin-bottom: 6px;
+        }
+
+        .achievement-section {
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid #333;
+        }
+
+        .achievement-item {
+            padding: 6px;
+            margin-bottom: 5px;
+            background: rgba(255, 255, 255, 0.02);
+            border-left: 2px solid #333;
+            opacity: 0.3;
+            transition: all 0.4s ease;
+            font-size: 9px;
+        }
+
+        .achievement-item.unlocked {
+            opacity: 1;
+            border-left-color: var(--gold-color);
+            background: rgba(255, 215, 0, 0.08);
+            color: #fff;
+        }
+
+        /* === TOP HUD === */
+        #top-hud {
+            position: absolute;
+            top: 0;
+            left: 250px;
+            right: 0;
+            height: 80px;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), transparent);
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 40;
+            border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+        }
+
+        .hud-stat {
+            text-align: center;
+        }
+
+        .hud-label {
+            font-size: 10px;
+            color: #666;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .hud-value {
+            font-size: 32px;
+            color: var(--primary-color);
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        /* === MODALS === */
+        .modal {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal h1 {
+            font-size: 48px;
+            letter-spacing: 8px;
+            margin-bottom: 40px;
+            color: var(--primary-color);
+        }
+
+        .modal-btn {
+            padding: 15px 50px;
+            background: transparent;
+            color: white;
+            border: 1px solid white;
+            cursor: pointer;
+            font-size: 16px;
+            letter-spacing: 5px;
+            transition: 0.3s;
+            margin: 10px;
+        }
+
+        .modal-btn:hover {
+            background: white;
+            color: #000;
+            box-shadow: 0 0 30px white;
+        }
+
+        /* === EFFECTS === */
+        #weather-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .rain-drop {
+            position: absolute;
+            background: rgba(0, 242, 255, 0.4);
+            width: 1px;
+            height: 12px;
+        }
+
+        .ghost-trail {
+            position: absolute;
+            width: 40px;
+            height: 80px;
+            opacity: 0.25;
+            z-index: 40;
+            pointer-events: none;
+            filter: blur(1px);
+        }
+
+        #velocity-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 270px;
+            width: 200px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--primary-color);
+            z-index: 30;
+        }
+
+        #velocity-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--primary-color);
+            box-shadow: 0 0 10px var(--primary-color);
+            transition: width 0.1s linear;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Weather Effects -->
+        <div id="weather-layer"></div>
+
+        <!-- Player -->
+        <div id="player">
+            <div class="player-body head"></div>
+            <div class="player-body torso"></div>
+            <div class="player-body arm-l"></div>
+            <div class="player-body arm-r"></div>
+            <div class="player-body leg-l"></div>
+            <div class="player-body leg-r"></div>
+        </div>
+
+        <!-- Sidebar UI -->
+        <div id="sidebar">
+            <div style="margin-bottom: 20px;">
+                <div class="hud-label" style="color: var(--gold-color); margin-bottom: 10px;">TITAN V4.3</div>
+            </div>
+
+            <div class="stat-row"><span>SPEED</span><span id="tel-speed">0.00</span></div>
+            <div class="stat-row"><span>HEIGHT</span><span id="tel-height">0.00</span></div>
+            <div class="stat-row"><span>SHIELD</span><span id="tel-shield" style="color: var(--secondary-color);">READY</span></div>
+            <div class="stat-row"><span>BEST_SECTOR</span><span id="tel-best" style="color: var(--gold-color);">01</span></div>
+
+            <div class="achievement-section">
+                <div class="hud-label" style="color: var(--gold-color); margin-bottom: 10px;">ACHIEVEMENTS</div>
+                <div id="ach-1" class="achievement-item">First Steps</div>
+                <div id="ach-2" class="achievement-item">Speed Demon (15)</div>
+                <div id="ach-3" class="achievement-item">Terminal Velocity (25)</div>
+                <div id="ach-4" class="achievement-item">Sector Explorer (5)</div>
+                <div id="ach-5" class="achievement-item">Sector Master (10)</div>
+                <div id="ach-6" class="achievement-item">Untouchable</div>
+                <div id="ach-7" class="achievement-item">Sonic Boom (35)</div>
+                <div id="ach-8" class="achievement-item">Sky High</div>
+                <div id="ach-9" class="achievement-item">Marathon (50)</div>
+                <div id="ach-10" class="achievement-item">The Titan</div>
+            </div>
+
+            <p style="font-size: 8px; opacity: 0.3; margin-top: 30px;">PARKOUR_RUNNER_V4.3</p>
+        </div>
+
+        <!-- Top HUD -->
+        <div id="top-hud">
+            <div class="hud-stat">
+                <div class="hud-label">Sector</div>
+                <div class="hud-value" id="ui-sector">01</div>
+            </div>
+            <div class="hud-stat">
+                <div class="hud-label">Progress</div>
+                <div class="hud-value" id="ui-progress">0/10</div>
+            </div>
+            <div class="hud-stat">
+                <div class="hud-label">Status</div>
+                <div class="hud-value" id="ui-status">READY</div>
+            </div>
+        </div>
+
+        <!-- Velocity Bar -->
+        <div id="velocity-bar">
+            <div id="velocity-fill"></div>
+        </div>
+
+        <!-- Boot Modal -->
+        <div id="modal-boot" class="modal">
+            <h1>TITAN</h1>
+            <button class="modal-btn" onclick="GameEngine.init()">START</button>
+        </div>
+
+        <!-- Pause Modal -->
+        <div id="modal-pause" class="modal" style="display: none;">
+            <h1>PAUSED</h1>
+            <button class="modal-btn" onclick="GameEngine.togglePause()">RESUME</button>
+            <button class="modal-btn" onclick="location.reload()">RESTART</button>
+        </div>
+
+        <!-- Game Over Modal -->
+        <div id="modal-gameover" class="modal" style="display: none;">
+            <h1>SECTOR FAILED</h1>
+            <div style="font-size: 24px; margin: 20px 0;">Reached Sector: <span id="gameover-sector">01</span></div>
+            <button class="modal-btn" onclick="location.reload()">TRY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        const GameEngine = {
+            state: {
+                active: false,
+                paused: false,
+                speed: 9.0,
+                maxSpeed: 55.0,
+                acceleration: 0.0035,
+                playerY: 0,
+                playerVelY: 0,
+                gravity: 0.6,
+                jumpPower: 18,
+                canJump: true,
+                sector: 1,
+                bestSector: 1,
+                dodgesThisLevel: 0,
+                dodgesRequired: 10,
+                totalDodges: 0,
+                hasShield: true,
+                ghostTick: 0,
+                achievements: new Set(),
+                lastFrame: 0
+            },
+
+            init() {
+                document.getElementById('modal-boot').style.display = 'none';
+                this.loadGame();
+                this.setupEvents();
+                this.state.active = true;
+                this.createWeather();
+                this.gameLoop(performance.now());
+            },
+
+            setupEvents() {
+                window.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        this.jump();
+                    }
+                    if (e.code === 'KeyP' || e.code === 'Escape') {
+                        this.togglePause();
+                    }
+                });
+            },
+
+            jump() {
+                if (this.state.canJump && !this.state.paused) {
+                    this.state.playerVelY = this.state.jumpPower;
+                    this.state.canJump = false;
+                }
+            },
+
+            togglePause() {
+                this.state.paused = !this.state.paused;
+                document.getElementById('modal-pause').style.display = this.state.paused ? 'flex' : 'none';
+            },
+
+            gameLoop(timestamp) {
+                if (!this.state.active) return;
+                if (this.state.paused) {
+                    requestAnimationFrame((t) => this.gameLoop(t));
+                    return;
+                }
+
+                const dt = Math.min((timestamp - this.state.lastFrame) / 16.667, 2);
+                this.state.lastFrame = timestamp;
+
+                // Update physics
+                this.state.playerVelY -= this.state.gravity * dt;
+                if (this.state.playerVelY < -30) this.state.playerVelY = -30;
+
+                this.state.playerY += this.state.playerVelY * dt;
+                if (this.state.playerY <= 0) {
+                    this.state.playerY = 0;
+                    this.state.playerVelY = 0;
+                    this.state.canJump = true;
+                }
+
+                // Increase speed
+                if (this.state.speed < this.state.maxSpeed) {
+                    this.state.speed += this.state.acceleration * dt;
+                }
+
+                // Update player position
+                document.getElementById('player').style.bottom = this.state.playerY + 'px';
+
+                // Update obstacles
+                this.updateObstacles();
+
+                // Update ghost trail
+                this.updateGhostTrail();
+
+                // Update weather
+                this.updateWeather();
+
+                // Check achievements
+                this.checkAchievements();
+
+                // Update UI
+                this.updateUI();
+
+                requestAnimationFrame((t) => this.gameLoop(t));
+            },
+
+            updateObstacles() {
+                if (!window.obstacleSpawner) {
+                    window.obstacleSpawner = {
+                        timer: 0,
+                        interval: 1000
+                    };
+                }
+
+                window.obstacleSpawner.timer += this.state.speed;
+                if (window.obstacleSpawner.timer > window.obstacleSpawner.interval) {
+                    this.spawnObstacle();
+                    window.obstacleSpawner.timer = 0;
+                    window.obstacleSpawner.interval = Math.max(400, 1200 - (this.state.speed * 8));
+                }
+
+                // Move and check obstacles
+                const obstacles = document.querySelectorAll('.obstacle');
+                obstacles.forEach((obs, idx) => {
+                    const left = parseFloat(obs.style.left) || 1200;
+                    const newLeft = left - this.state.speed;
+                    obs.style.left = newLeft + 'px';
+
+                    // Collision check
+                    if (newLeft < 150 && newLeft > 80 && this.state.playerY < 100) {
+                        if (this.state.hasShield) {
+                            this.state.hasShield = false;
+                            obs.remove();
+                        } else {
+                            this.gameOver();
+                        }
+                    }
+
+                    // Remove off-screen
+                    if (newLeft < -100) {
+                        obs.remove();
+                        this.dodgeSuccess();
+                    }
+                });
+            },
+
+            spawnObstacle() {
+                const height = Math.random() * 80 + 60;
+                const width = Math.random() * 30 + 30;
+                const obs = document.createElement('div');
+                obs.className = 'obstacle';
+                obs.style.width = width + 'px';
+                obs.style.height = height + 'px';
+                obs.style.left = '1200px';
+                document.getElementById('game-container').appendChild(obs);
+            },
+
+            dodgeSuccess() {
+                this.state.dodgesThisLevel++;
+                this.state.totalDodges++;
+
+                if (this.state.dodgesThisLevel >= this.state.dodgesRequired) {
+                    this.nextSector();
+                }
+            },
+
+            nextSector() {
+                this.state.sector++;
+                if (this.state.sector > this.state.bestSector) {
+                    this.state.bestSector = this.state.sector;
+                }
+                this.state.dodgesThisLevel = 0;
+                this.state.dodgesRequired++;
+                this.state.speed += 1.5;
+                this.state.hasShield = true;
+                this.saveGame();
+            },
+
+            gameOver() {
+                this.state.active = false;
+                this.saveGame();
+                document.getElementById('gameover-sector').innerText = this.state.sector.toString().padStart(2, '0');
+                document.getElementById('modal-gameover').style.display = 'flex';
+            },
+
+            updateGhostTrail() {
+                if (this.state.speed > 18) {
+                    this.state.ghostTick++;
+                    const freq = Math.max(4, 12 - Math.floor(this.state.speed / 5));
+
+                    if (this.state.ghostTick > freq) {
+                        const ghost = document.getElementById('player').cloneNode(true);
+                        ghost.className = 'ghost-trail';
+                        ghost.id = '';
+                        ghost.style.bottom = this.state.playerY + 'px';
+                        ghost.style.left = '100px';
+                        document.getElementById('game-container').appendChild(ghost);
+
+                        setTimeout(() => ghost.remove(), 300);
+                        this.state.ghostTick = 0;
+                    }
+                }
+            },
+
+            createWeather() {
+                const weather = document.getElementById('weather-layer');
+                for (let i = 0; i < 60; i++) {
+                    const drop = document.createElement('div');
+                    drop.className = 'rain-drop';
+                    drop.style.left = Math.random() * 1200 + 'px';
+                    drop.style.top = Math.random() * 600 + 'px';
+                    drop.dataset.speed = Math.random() * 10 + 8;
+                    weather.appendChild(drop);
+                }
+            },
+
+            updateWeather() {
+                const drops = document.querySelectorAll('.rain-drop');
+                drops.forEach(drop => {
+                    let left = parseFloat(drop.style.left);
+                    let top = parseFloat(drop.style.top);
+                    const speed = parseFloat(drop.dataset.speed);
+
+                    left -= (this.state.speed + speed) * 0.05;
+                    top += speed * 0.1;
+
+                    if (left < -10) left = 1210;
+                    if (top > 610) top = -10;
+
+                    drop.style.left = left + 'px';
+                    drop.style.top = top + 'px';
+                });
+            },
+
+            checkAchievements() {
+                const unlock = (id) => {
+                    if (!this.state.achievements.has(id)) {
+                        this.state.achievements.add(id);
+                        const el = document.getElementById('ach-' + id);
+                        if (el) el.classList.add('unlocked');
+                        this.saveGame();
+                    }
+                };
+
+                if (this.state.totalDodges >= 1) unlock(1);
+                if (this.state.speed >= 15) unlock(2);
+                if (this.state.speed >= 25) unlock(3);
+                if (this.state.sector >= 5) unlock(4);
+                if (this.state.sector >= 10) unlock(5);
+                if (this.state.sector >= 3 && this.state.hasShield) unlock(6);
+                if (this.state.speed >= 35) unlock(7);
+                if (this.state.playerY > 150) unlock(8);
+                if (this.state.totalDodges >= 50) unlock(9);
+                if (this.state.sector >= 20) unlock(10);
+            },
+
+            updateUI() {
+                const velPercent = (this.state.speed / this.state.maxSpeed) * 100;
+                document.getElementById('velocity-fill').style.width = velPercent + '%';
+                document.getElementById('tel-speed').innerText = this.state.speed.toFixed(1);
+                document.getElementById('tel-height').innerText = Math.max(0, this.state.playerY).toFixed(1);
+                document.getElementById('tel-shield').innerText = this.state.hasShield ? 'READY' : 'OFFLINE';
+                document.getElementById('ui-sector').innerText = this.state.sector.toString().padStart(2, '0');
+                document.getElementById('tel-best').innerText = this.state.bestSector.toString().padStart(2, '0');
+                document.getElementById('ui-progress').innerText = this.state.dodgesThisLevel + '/' + this.state.dodgesRequired;
+                document.getElementById('ui-status').innerText = this.state.hasShield ? 'STABLE' : 'WEAK';
+            },
+
+            saveGame() {
+                const data = {
+                    best: this.state.bestSector,
+                    totalDodges: this.state.totalDodges,
+                    achievements: Array.from(this.state.achievements)
+                };
+                localStorage.setItem('TITAN_SAVE', JSON.stringify(data));
+            },
+
+            loadGame() {
+                const data = localStorage.getItem('TITAN_SAVE');
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    this.state.bestSector = parsed.best || 1;
+                    this.state.totalDodges = parsed.totalDodges || 0;
+                    if (parsed.achievements) {
+                        parsed.achievements.forEach(id => {
+                            this.state.achievements.add(id);
+                            const el = document.getElementById('ach-' + id);
+                            if (el) el.classList.add('unlocked');
+                        });
+                    }
+                }
+            }
+        };
+    </script>
+</body>
+</html>
